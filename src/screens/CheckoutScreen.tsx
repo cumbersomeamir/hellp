@@ -6,105 +6,71 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  FlatList,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {RootStackParamList} from '../navigation/AppNavigator';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {incrementQuantity, decrementQuantity} from '../store/cartSlice';
+import {products} from '../constants/products';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
 
-interface CartItem {
-  id: string;
-  name: string;
-  weight: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
-
-interface RecommendedProduct {
-  id: string;
-  name: string;
-  weight: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  discount?: string;
-}
-
 const CheckoutScreen: React.FC<Props> = ({navigation}) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: '1',
-      name: "Lay's West Indies Hot n Sweet Chilli Flavour Potat...",
-      weight: '48 g',
-      price: 19,
-      quantity: 1,
-      image: 'https://via.placeholder.com/80',
-    },
-  ]);
+  const dispatch = useAppDispatch();
+  const {items: cartItems} = useAppSelector(state => state.cart);
+  const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
+  const [selectedCity, setSelectedCity] = useState('Mumbai');
 
-  const [selectedInstructions, setSelectedInstructions] = useState<string[]>(
-    [],
-  );
-
-  const recommendedProducts: RecommendedProduct[] = [
-    {
-      id: 'r1',
-      name: 'Kurkure Puffcorn Yummy Cheese Puffs',
-      weight: '52 g',
-      price: 19,
-      image: 'https://via.placeholder.com/100',
-    },
-    {
-      id: 'r2',
-      name: 'Coca-Cola Zero Sugar Soft Drink',
-      weight: '300 ml ∙ 300 ml',
-      price: 40,
-      originalPrice: 100,
-      image: 'https://via.placeholder.com/100',
-      discount: '60% OFF',
-    },
-    {
-      id: 'r3',
-      name: 'Thums Up Soft Drink (750 ml)',
-      weight: '750 ml ∙ 750 ml',
-      price: 39,
-      originalPrice: 100,
-      image: 'https://via.placeholder.com/100',
-    },
-  ];
+  // Get actual cart items with product details
+  const actualCartItems = cartItems.map(cartItem => {
+    const product = products.find(p => p.id === cartItem.productId);
+    return {
+      id: cartItem.productId,
+      name: product?.name || 'Unknown Product',
+      weight: product?.quantity || '1 kg',
+      price: product?.price || 0,
+      quantity: cartItem.quantity,
+      image: product?.picture || 'https://via.placeholder.com/80',
+    };
+  });
 
   const deliveryInstructions = [
     {id: 'record', icon: 'record-circle-outline', label: 'Record\nand hold'},
     {id: 'avoid-bell', icon: 'bell-off-outline', label: 'Avoid ringing\nbell'},
     {id: 'no-bell', icon: 'bell-outline', label: "Don't ring\nthe bell"},
-    {id: 'other', icon: 'ellipsis-horizontal', label: ''},
+    {id: 'other', icon: 'ellipsis-horizontal-outline', label: ''},
   ];
 
-  const itemsTotal = 20;
+  // Calculate bill details based on actual cart items
+  const itemsTotal = actualCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const feedingIndiaDonation = 1;
-  const deliveryCharge = 20;
+  const deliveryCharge = itemsTotal >= 99 ? 0 : 20;
   const handlingCharge = 11;
-  const smallCartCharge = 20;
-  const grandTotal = 81;
+  const smallCartCharge = itemsTotal >= 99 ? 0 : 20;
+  const grandTotal = itemsTotal + feedingIndiaDonation + deliveryCharge + handlingCharge + smallCartCharge;
 
   const handleQuantityChange = (itemId: string, change: number) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === itemId
-          ? {...item, quantity: Math.max(1, item.quantity + change)}
-          : item,
-      ),
-    );
+    if (change > 0) {
+      dispatch(incrementQuantity(itemId));
+    } else {
+      dispatch(decrementQuantity(itemId));
+    }
   };
 
   const toggleInstruction = (id: string) => {
     setSelectedInstructions(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id],
     );
+  };
+
+  const handleCityChange = () => {
+    // Simple city selection - in real app this would open a modal or navigate to city selection
+    const cities = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata'];
+    const currentIndex = cities.indexOf(selectedCity);
+    const nextIndex = (currentIndex + 1) % cities.length;
+    setSelectedCity(cities[nextIndex]);
   };
 
   return (
@@ -136,7 +102,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
         </View>
 
         {/* Cart Items */}
-        {cartItems.map(item => (
+        {actualCartItems.map(item => (
           <View key={item.id} style={styles.cartItem}>
             <Image source={{uri: item.image}} style={styles.cartItemImage} />
             <View style={styles.cartItemInfo}>
@@ -158,7 +124,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
                   <Icon name="add" size={16} color="#00AA00" />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.cartItemPrice}>₹{item.price}</Text>
+              <Text style={styles.cartItemPrice}>₹{item.price * item.quantity}</Text>
             </View>
           </View>
         ))}
@@ -186,48 +152,6 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
           <Icon name="chevron-forward" size={16} color="#666" />
         </TouchableOpacity>
 
-        {/* You might also like */}
-        <View style={styles.recommendationsSection}>
-          <Text style={styles.sectionTitle}>You might also like</Text>
-          <FlatList
-            horizontal
-            data={recommendedProducts}
-            keyExtractor={item => item.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.recommendationsList}
-            renderItem={({item}) => (
-              <View style={styles.recommendationCard}>
-                <Image
-                  source={{uri: item.image}}
-                  style={styles.recommendationImage}
-                  resizeMode="contain"
-                />
-                <TouchableOpacity style={styles.addButton}>
-                  <Text style={styles.addButtonText}>ADD</Text>
-                </TouchableOpacity>
-                <Text style={styles.recommendationWeight}>{item.weight}</Text>
-                <Text style={styles.recommendationName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-                <View style={styles.recommendationPriceRow}>
-                  <Text style={styles.recommendationPrice}>₹{item.price}</Text>
-                  {item.originalPrice && (
-                    <Text style={styles.recommendationOriginalPrice}>
-                      MRP ₹{item.originalPrice}
-                    </Text>
-                  )}
-                </View>
-                {item.discount && (
-                  <Text style={styles.recommendationDiscount}>
-                    {item.discount}
-                  </Text>
-                )}
-                <Text style={styles.seeMoreText}>See more like this</Text>
-              </View>
-            )}
-          />
-        </View>
-
         {/* Bill Details */}
         <View style={styles.billSection}>
           <Text style={styles.sectionTitle}>Bill details</Text>
@@ -236,7 +160,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
               <Icon name="receipt-outline" size={16} color="#666" />
               <Text style={styles.billLabel}>Items total</Text>
             </View>
-            <Text style={styles.billValue}>₹20 ₹19</Text>
+            <Text style={styles.billValue}>₹{itemsTotal}</Text>
           </View>
           <View style={styles.billRow}>
             <View style={styles.billLeft}>
@@ -319,7 +243,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
                     <Icon name="checkmark" size={12} color="#00AA00" />
                   )}
                 </View>
-                <Icon name={instruction.icon as any} size={20} color="#666" />
+                <Icon name={instruction.icon} size={20} color="#666" />
                 {instruction.label && (
                   <Text style={styles.instructionLabel}>
                     {instruction.label}
@@ -334,15 +258,15 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
         <View style={styles.addressSection}>
           <View style={styles.addressHeader}>
             <View style={styles.addressLeft}>
-              <Icon name="home" size={20} color="#FF9800" />
-              <Text style={styles.addressTitle}>Delivering to Home</Text>
+              <Icon name="location" size={20} color="#FF9800" />
+              <Text style={styles.addressTitle}>City</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleCityChange}>
               <Text style={styles.changeButton}>Change</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.addressText}>
-            Jomy, 3/5/1, Sector 9, Vikas Nagar Sector 9, Vikas...
+            {selectedCity}
           </Text>
         </View>
 
@@ -539,90 +463,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
   },
-  recommendationsSection: {
+  billSection: {
     backgroundColor: '#ffffff',
+    padding: 16,
     marginTop: 8,
-    paddingTop: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#000',
-    paddingHorizontal: 16,
     marginBottom: 12,
-  },
-  recommendationsList: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  recommendationCard: {
-    width: 140,
-    marginRight: 12,
-  },
-  recommendationImage: {
-    width: 140,
-    height: 120,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  addButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#00AA00',
-    borderRadius: 8,
-    paddingVertical: 6,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  addButtonText: {
-    color: '#00AA00',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  recommendationWeight: {
-    fontSize: 11,
-    color: '#666',
-    marginBottom: 4,
-  },
-  recommendationName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-    minHeight: 32,
-  },
-  recommendationPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  recommendationPrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
-  },
-  recommendationOriginalPrice: {
-    fontSize: 11,
-    color: '#999',
-    textDecorationLine: 'line-through',
-  },
-  recommendationDiscount: {
-    fontSize: 10,
-    color: '#00AA00',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  seeMoreText: {
-    fontSize: 10,
-    color: '#00AA00',
-    fontWeight: '600',
-  },
-  billSection: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    marginTop: 8,
   },
   billRow: {
     flexDirection: 'row',
