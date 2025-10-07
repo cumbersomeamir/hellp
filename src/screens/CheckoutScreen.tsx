@@ -83,10 +83,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
           <Icon name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Icon name="share-outline" size={20} color="#00AA00" />
-          <Text style={styles.shareText}>Share</Text>
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -96,8 +93,8 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
             <Icon name="flash" size={16} color="#00AA00" />
           </View>
           <View style={styles.deliveryTextContainer}>
-            <Text style={styles.deliveryTitle}>Delivery in 8 minutes</Text>
-            <Text style={styles.deliverySubtitle}>Shipment of 1 item</Text>
+            <Text style={styles.deliveryTitle}>Delivery scheduled for tomorrow</Text>
+            <Text style={styles.deliverySubtitle}>Faster shipment will be availble in the future</Text>
           </View>
         </View>
 
@@ -322,15 +319,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  shareText: {
-    fontSize: 14,
-    color: '#00AA00',
-    fontWeight: '600',
+  headerSpacer: {
+    width: 24,
   },
   scrollView: {
     flex: 1,
@@ -640,7 +630,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#ffffff',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     shadowColor: '#000',
