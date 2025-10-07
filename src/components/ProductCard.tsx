@@ -83,12 +83,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </View>
 
-        {/* Discount */}
-        {product.discount && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{product.discount}</Text>
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -224,14 +218,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#999',
     textDecorationLine: 'line-through',
-  },
-  discountBadge: {
-    alignSelf: 'flex-start',
-  },
-  discountText: {
-    fontSize: 10,
-    color: '#00AA00',
-    fontWeight: '600',
   },
 });
 
