@@ -83,6 +83,9 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
     try {
       setShowConfirmation(false);
       
+      // Show loading state
+      alert('Placing your order...');
+      
       // Prepare order data
       const orderData = {
         userId: 'user_123', // In real app, get from auth context
@@ -114,6 +117,8 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
         status: 'pending'
       };
 
+      console.log('📦 Sending order data:', orderData);
+
       // Send order to server
       const response = await fetch('http://192.168.29.51:3000/api/orders/create', {
         method: 'POST',
@@ -123,20 +128,34 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
         body: JSON.stringify(orderData),
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
+      console.log('📦 Server response:', result);
 
       if (result.success) {
-        console.log('Order placed successfully:', result.data);
+        console.log('✅ Order placed successfully:', result.data);
+        alert(`Order placed successfully!\nOrder ID: ${result.data.orderId}\nTotal: ₹${result.data.grandTotal}`);
         // Navigate back or to order confirmation screen
         navigation.goBack();
       } else {
-        console.error('Order failed:', result.message);
-        // Show error message to user
-        alert('Failed to place order. Please try again.');
+        console.error('❌ Order failed:', result.message);
+        alert(`Failed to place order: ${result.message}\nPlease try again.`);
       }
     } catch (error) {
-      console.error('Error placing order:', error);
-      alert('Network error. Please check your connection and try again.');
+      console.error('❌ Error placing order:', error);
+      if (error.message.includes('Network request failed')) {
+        alert('Network error: Cannot connect to server.\nPlease check your internet connection and try again.');
+      } else if (error.message.includes('HTTP error')) {
+        alert(`Server error: ${error.message}\nPlease try again later.`);
+      } else {
+        alert(`Error: ${error.message}\nPlease try again.`);
+      }
     }
   };
 
