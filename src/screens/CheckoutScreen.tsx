@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Modal,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -22,6 +23,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
   const {items: cartItems} = useAppSelector(state => state.cart);
   const [selectedInstructions, setSelectedInstructions] = useState<string[]>([]);
   const [selectedCity, setSelectedCity] = useState('Mumbai');
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Get actual cart items with product details
   const actualCartItems = cartItems.map(cartItem => {
@@ -71,6 +73,22 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
     const currentIndex = cities.indexOf(selectedCity);
     const nextIndex = (currentIndex + 1) % cities.length;
     setSelectedCity(cities[nextIndex]);
+  };
+
+  const handlePlaceOrder = () => {
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmOrder = () => {
+    setShowConfirmation(false);
+    // In real app, this would process the order
+    console.log('Order placed successfully!');
+    // Navigate back or to order confirmation screen
+    navigation.goBack();
+  };
+
+  const handleCancelOrder = () => {
+    setShowConfirmation(false);
   };
 
   return (
@@ -280,7 +298,7 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
             <Text style={styles.paymentName}>Google Pay UPI</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.placeOrderButton}>
+        <TouchableOpacity style={styles.placeOrderButton} onPress={handlePlaceOrder}>
           <View style={styles.placeOrderContent}>
             <Text style={styles.placeOrderAmount}>₹{grandTotal}</Text>
             <Text style={styles.placeOrderTotal}>TOTAL</Text>
@@ -291,6 +309,41 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelOrder}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Confirm Order</Text>
+            </View>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalMessage}>
+                Are you sure you want to place this order for ₹{grandTotal}?
+              </Text>
+              <Text style={styles.modalSubtext}>
+                This action cannot be undone.
+              </Text>
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCancelOrder}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleConfirmOrder}>
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -689,6 +742,82 @@ const styles = StyleSheet.create({
   placeOrderText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#ffffff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+  },
+  modalContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    alignItems: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: '#00AA00',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#ffffff',
   },
 });
