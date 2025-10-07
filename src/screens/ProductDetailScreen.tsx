@@ -8,11 +8,14 @@ import {
   Image,
   Dimensions,
   FlatList,
+  Platform,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {RootStackParamList} from '../navigation/AppNavigator';
 import {Product} from '../constants/products';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {addToCart, incrementQuantity, decrementQuantity} from '../store/cartSlice';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 
@@ -21,12 +24,16 @@ const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {product} = route.params;
   const [isFavorite, setIsFavorite] = useState(product.isFavorite);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
-  const [isInCart, setIsInCart] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const dispatch = useAppDispatch();
+  const {items: cartItems, showViewCart} = useAppSelector(state => state.cart);
 
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Check if current product is in cart
+  const cartItem = cartItems.find(item => item.productId === product.id);
+  const isInCart = !!cartItem;
+  const quantity = cartItem?.quantity || 0;
 
   // Mock similar products
   const similarProducts = [
@@ -47,42 +54,18 @@ const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
     },
   ];
 
-  const formatReviews = (count: number): string => {
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
-    return count.toString();
-  };
 
-  const handlePrevImage = () => {
-    if (currentImageIndex > 0) {
-      setCurrentImageIndex(currentImageIndex - 1);
-    }
-  };
-
-  const handleNextImage = () => {
-    // In real app, check against actual images array length
-    if (currentImageIndex < 2) {
-      setCurrentImageIndex(currentImageIndex + 1);
-    }
-  };
 
   const handleAddToCart = () => {
-    setIsInCart(true);
-    setQuantity(1);
+    dispatch(addToCart(product.id));
   };
 
   const handleIncrement = () => {
-    setQuantity(prev => prev + 1);
+    dispatch(incrementQuantity(product.id));
   };
 
   const handleDecrement = () => {
-    if (quantity > 1) {
-      setQuantity(prev => prev - 1);
-    } else {
-      setIsInCart(false);
-      setQuantity(1);
-    }
+    dispatch(decrementQuantity(product.id));
   };
 
   const handleViewCart = () => {
@@ -111,9 +94,6 @@ const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
           <TouchableOpacity style={styles.headerButton}>
             <Icon name="search-outline" size={24} color="#333" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Icon name="share-social-outline" size={24} color="#333" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -129,54 +109,12 @@ const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
               style={styles.productImage}
               resizeMode="contain"
             />
-            {/* Carousel Navigation Buttons */}
-            <TouchableOpacity
-              style={[styles.carouselButton, styles.carouselButtonLeft]}
-              onPress={handlePrevImage}>
-              <Icon name="chevron-forward" size={24} color="#333" />
-            </TouchableOpacity>
           </View>
 
-          {/* Image Indicators */}
-          <View style={styles.imageIndicators}>
-            {[0, 1, 2].map(index => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  currentImageIndex === index && styles.indicatorActive,
-                ]}
-              />
-            ))}
-          </View>
         </View>
 
         {/* Product Info Card */}
         <View style={styles.productInfoCard}>
-          {/* Delivery Time */}
-          <View style={styles.deliveryBadge}>
-            <Icon name="timer-outline" size={14} color="#666" />
-            <Text style={styles.deliveryText}>{product.deliveryTime}</Text>
-          </View>
-
-          {/* Rating */}
-          <View style={styles.ratingContainer}>
-            <View style={styles.stars}>
-              {[1, 2, 3, 4, 5].map(star => (
-                <Icon
-                  key={star}
-                  name={
-                    star <= Math.floor(product.rating) ? 'star' : 'star-half'
-                  }
-                  size={14}
-                  color="#FFA500"
-                />
-              ))}
-            </View>
-            <Text style={styles.reviewCount}>
-              ({formatReviews(product.reviews)})
-            </Text>
-          </View>
 
           {/* Product Name */}
           <Text style={styles.productName}>{product.name}</Text>
@@ -226,23 +164,6 @@ const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
           )}
         </View>
 
-        {/* Brand Section */}
-        <TouchableOpacity style={styles.brandSection}>
-          <View style={styles.brandLeft}>
-            <View style={styles.brandLogo}>
-              <Image
-                source={{uri: 'https://via.placeholder.com/40'}}
-                style={styles.brandLogoImage}
-                resizeMode="contain"
-              />
-            </View>
-            <View>
-              <Text style={styles.brandName}>Lay's</Text>
-              <Text style={styles.brandSubtext}>Explore all products</Text>
-            </View>
-          </View>
-          <Icon name="chevron-forward" size={24} color="#333" />
-        </TouchableOpacity>
 
         {/* Similar Products */}
         <View style={styles.similarProductsSection}>
@@ -268,6 +189,24 @@ const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Floating View Cart Component */}
+      {showViewCart && (
+        <View style={styles.floatingViewCart}>
+          <TouchableOpacity
+            style={styles.viewCartButton}
+            onPress={handleViewCart}>
+            <View style={styles.cartBadge}>
+              <Icon name="cart-outline" size={18} color="#ffffff" />
+            </View>
+            <View style={styles.viewCartTextContainer}>
+              <Text style={styles.viewCartText}>View cart</Text>
+              <Text style={styles.viewCartSubtext}>{cartItems.reduce((sum, item) => sum + item.quantity, 0)} item{cartItems.reduce((sum, item) => sum + item.quantity, 0) > 1 ? 's' : ''}</Text>
+            </View>
+            <Icon name="chevron-forward" size={20} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Sticky Bottom Bar */}
       <View style={styles.bottomBar}>
@@ -296,32 +235,18 @@ const ProductDetailScreen: React.FC<Props> = ({route, navigation}) => {
             <Text style={styles.addToCartText}>Add to cart</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.cartControlsContainer}>
+          <View style={styles.quantitySelector}>
             <TouchableOpacity
-              style={styles.viewCartButton}
-              onPress={handleViewCart}>
-              <View style={styles.cartBadge}>
-                <Icon name="cart-outline" size={18} color="#ffffff" />
-              </View>
-              <View style={styles.viewCartTextContainer}>
-                <Text style={styles.viewCartText}>View cart</Text>
-                <Text style={styles.viewCartSubtext}>1 item</Text>
-              </View>
-              <Icon name="chevron-forward" size={20} color="#ffffff" />
+              style={styles.quantityButton}
+              onPress={handleDecrement}>
+              <Icon name="remove" size={20} color="#ffffff" />
             </TouchableOpacity>
-            <View style={styles.quantityControls}>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={handleDecrement}>
-                <Icon name="remove" size={20} color="#ffffff" />
-              </TouchableOpacity>
-              <Text style={styles.quantityText}>{quantity}</Text>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={handleIncrement}>
-                <Icon name="add" size={20} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.quantityText}>{quantity}</Text>
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={handleIncrement}>
+              <Icon name="add" size={20} color="#ffffff" />
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -367,73 +292,10 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.7,
     height: 280,
   },
-  carouselButton: {
-    position: 'absolute',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  carouselButtonLeft: {
-    left: 16,
-  },
-  imageIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 6,
-  },
-  indicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#d0d0d0',
-  },
-  indicatorActive: {
-    backgroundColor: '#666',
-  },
   productInfoCard: {
     backgroundColor: '#ffffff',
     padding: 16,
     marginTop: 8,
-  },
-  deliveryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginBottom: 8,
-    gap: 4,
-  },
-  deliveryText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  stars: {
-    flexDirection: 'row',
-    marginRight: 6,
-    gap: 2,
-  },
-  reviewCount: {
-    fontSize: 12,
-    color: '#666',
   },
   productName: {
     fontSize: 18,
@@ -514,40 +376,6 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
   },
-  brandSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 16,
-    marginTop: 8,
-  },
-  brandLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  brandLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandLogoImage: {
-    width: 40,
-    height: 40,
-  },
-  brandName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000',
-  },
-  brandSubtext: {
-    fontSize: 12,
-    color: '#666',
-  },
   similarProductsSection: {
     backgroundColor: '#ffffff',
     marginTop: 8,
@@ -578,7 +406,15 @@ const styles = StyleSheet.create({
     height: 80,
   },
   bottomSpacing: {
-    height: 100,
+    height: 160,
+  },
+  floatingViewCart: {
+    position: 'absolute',
+    bottom: 140,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 999,
   },
   bottomBar: {
     position: 'absolute',
@@ -590,7 +426,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#ffffff',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: Platform.select({ios: 18, android: 14}),
+    paddingBottom: Platform.select({ios: 36, android: 20}),
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     shadowColor: '#000',
@@ -598,6 +435,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 8,
+    zIndex: 1000,
   },
   bottomBarLeft: {
     flex: 1,
@@ -653,20 +491,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  cartControlsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-    gap: 12,
-  },
   viewCartButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#00AA00',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    alignSelf: 'center',
   },
   cartBadge: {
     width: 32,
@@ -677,7 +515,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewCartTextContainer: {
-    flex: 1,
+    alignItems: 'flex-start',
   },
   viewCartText: {
     color: '#ffffff',
@@ -689,15 +527,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     opacity: 0.9,
   },
-  quantityControls: {
+  quantitySelector: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#00AA00',
-    borderRadius: 8,
+    borderRadius: 25,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
   },
   quantityButton: {
-    width: 36,
+    width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',

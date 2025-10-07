@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -10,6 +10,11 @@ interface ProductCardProps {
   product: Product;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  isInCart?: boolean;
+  quantity?: number;
+  onAddToCart?: () => void;
+  onIncrement?: () => void;
+  onDecrement?: () => void;
 }
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -18,8 +23,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   product,
   isFavorite,
   onToggleFavorite,
+  isInCart = false,
+  quantity = 0,
+  onAddToCart,
+  onIncrement,
+  onDecrement,
 }) => {
   const navigation = useNavigation<NavigationProp>();
+  const [localIsInCart, setLocalIsInCart] = useState(isInCart);
+  const [localQuantity, setLocalQuantity] = useState(quantity);
 
   const formatReviews = (count: number): string => {
     if (count >= 1000) {
@@ -31,6 +43,39 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const handleCardPress = () => {
     navigation.navigate('ProductDetail', {product});
   };
+
+  const handleAddToCart = () => {
+    if (onAddToCart) {
+      onAddToCart();
+    } else {
+      setLocalIsInCart(true);
+      setLocalQuantity(1);
+    }
+  };
+
+  const handleIncrement = () => {
+    if (onIncrement) {
+      onIncrement();
+    } else {
+      setLocalQuantity(prev => prev + 1);
+    }
+  };
+
+  const handleDecrement = () => {
+    if (onDecrement) {
+      onDecrement();
+    } else {
+      if (localQuantity > 1) {
+        setLocalQuantity(prev => prev - 1);
+      } else {
+        setLocalIsInCart(false);
+        setLocalQuantity(1);
+      }
+    }
+  };
+
+  const currentIsInCart = onAddToCart ? isInCart : localIsInCart;
+  const currentQuantity = onAddToCart ? quantity : localQuantity;
 
   return (
     <TouchableOpacity style={styles.card} onPress={handleCardPress} activeOpacity={0.9}>
@@ -55,10 +100,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
         />
       </View>
 
-      {/* Add Button */}
-      <TouchableOpacity style={styles.addButton}>
-        <Text style={styles.addButtonText}>ADD</Text>
-      </TouchableOpacity>
+      {/* Add Button / Quantity Selector */}
+      {!currentIsInCart ? (
+        <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
+          <Text style={styles.addButtonText}>ADD</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.quantitySelector}>
+          <TouchableOpacity
+            style={styles.quantityButton}
+            onPress={handleDecrement}>
+            <Icon name="remove" size={16} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.quantityText}>{currentQuantity}</Text>
+          <TouchableOpacity
+            style={styles.quantityButton}
+            onPress={handleIncrement}>
+            <Icon name="add" size={16} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Product Info */}
       <View style={styles.infoContainer}>
@@ -158,6 +219,33 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#00AA00',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  quantitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00AA00',
+    borderRadius: 8,
+    marginHorizontal: 12,
+    marginTop: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00AA00',
+  },
+  quantityText: {
+    paddingHorizontal: 8,
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '700',
   },
   infoContainer: {
