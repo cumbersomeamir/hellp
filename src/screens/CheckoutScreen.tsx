@@ -79,12 +79,65 @@ const CheckoutScreen: React.FC<Props> = ({navigation}) => {
     setShowConfirmation(true);
   };
 
-  const handleConfirmOrder = () => {
-    setShowConfirmation(false);
-    // In real app, this would process the order
-    console.log('Order placed successfully!');
-    // Navigate back or to order confirmation screen
-    navigation.goBack();
+  const handleConfirmOrder = async () => {
+    try {
+      setShowConfirmation(false);
+      
+      // Prepare order data
+      const orderData = {
+        userId: 'user_123', // In real app, get from auth context
+        items: actualCartItems.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          name: item.name,
+          weight: item.weight,
+          price: item.price,
+          image: item.image
+        })),
+        deliveryInfo: {
+          city: selectedCity,
+          instructions: selectedInstructions,
+          scheduledDelivery: 'Delivery scheduled for tomorrow'
+        },
+        paymentInfo: {
+          method: 'Google Pay UPI',
+          status: 'pending'
+        },
+        billDetails: {
+          itemsTotal,
+          feedingIndiaDonation,
+          deliveryCharge,
+          handlingCharge,
+          smallCartCharge,
+          grandTotal
+        },
+        status: 'pending'
+      };
+
+      // Send order to server
+      const response = await fetch('http://192.168.29.51:3000/api/orders/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('Order placed successfully:', result.data);
+        // Navigate back or to order confirmation screen
+        navigation.goBack();
+      } else {
+        console.error('Order failed:', result.message);
+        // Show error message to user
+        alert('Failed to place order. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      alert('Network error. Please check your connection and try again.');
+    }
   };
 
   const handleCancelOrder = () => {
